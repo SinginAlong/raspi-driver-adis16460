@@ -26,7 +26,7 @@ class ImuData:
         self.gyro.scal()
         self.temp=self.temp*0.25+25
     def dump(self):
-        print("{0},{1},{2},{3},{4},{5}".format(self.accl.x, self.accl.y, self.accl.z, self.gyro.x, self.gyro.y, self.gyro.z))
+        print("{0},{1},{2},{3},{4},{5},{6}".format(self.accl.x, self.accl.y, self.accl.z, self.gyro.x, self.gyro.y, self.gyro.z, self.temp))
 
 def SpiDevReadBurst(spi,reg):
     send=[0]*((10+1)*2)
@@ -61,32 +61,83 @@ def SpiReadSensor(spi):
     imu.gyro.z=values[7]
     imu.temp=values[8]
     imu.scaling()
-    imu.dump()
     return imu
 
-spi = spidev.SpiDev()
+def ImuResetHard(bcmGpio):
+    GPIO.output(bcmGpio,GPIO.LOW)
+    time.sleep(0.5)
+    GPIO.output(bcmGpio,GPIO.HIGH)
+    time.sleep(0.5)
+
+def ImuResetSoft(spi):
+    SpiDevWrite(spi,0x3E,0x80)
+    time.sleep(0.5)
+
+
+spi=spidev.SpiDev()
 spi.open(0, 0)
 spi.max_speed_hz=400000
 spi.mode=3
-
+bcmRst=6
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(6,GPIO.OUT)
-
-GPIO.output(6,GPIO.LOW)
-time.sleep(0.5)
-GPIO.output(6,GPIO.HIGH)
-time.sleep(0.5)
+GPIO.setup(bcmRst,GPIO.OUT)
+GPIO.output(bcmRst,GPIO.HIGH)
 
 #print('RESPONSE=0x' + format(SpiDevRead(spi,0x56),'x'))
 #print('TEMP_OUT=0x' + format(SpiDevRead(spi,0x1e),'x'))
 #print('GLOB_CMD=0x' + format(SpiDevRead(spi,0x1e),'x'))
 #print('MSC_CTRL=0x' + format(SpiDevRead(spi,0x32),'x'))
 
-
-for cnt in range(100):
-    imu=SpiReadSensor(spi)
-    time.sleep(0.05)
+mainloop=True
+while mainloop==True:
+    cmdline_str=raw_input()
+    cmdline=cmdline_str.split(' ')
+    print(cmdline)
     
+    if cmdline[0] in {'rd','read'}:
+        if len(cmdline) != 2:
+            print("usage: rd [addr]")
+        else:
+            reg=int(cmdline[1],0)
+            print(SpiDevRead(spi,reg))
+    elif cmdline[0] in {'wr','write'}:
+        if len(cmdline) != 3:
+            print("usage: wr [addr] [data]")
+        else:
+            reg=int(cmdline[1],0)
+            data=int(cmdline[2],0)
+            SpiDevWrite(spi,reg,data)
+    elif cmdline[0] in {'rst','reset'}:
+        if len(cmdline) != 1:
+            print("usage: rst")
+        else:
+            ImuResetSoft(spi)
+    elif cmdline[0] in {'rsthard','hardreset'}:
+        if len(cmdline) != 1:
+            print("usage: hardrst")
+        else:
+            ImuResetHard(bcmRst)
+    elif cmdline[0] in {'q','quit','exit'}:
+        break
+    elif cmdline[0] in {'run'}:
+        if len(cmdline) != 3:
+            print("usage: run [count] [delay@ms]")
+        else:
+            count=int(cmdline[1])
+            delay=int(cmdline[2])*0.001
+            for cnt in range(count):
+                imu=SpiReadSensor(spi)
+                imu.dump()
+                time.sleep(delay)
+    else:
+            print("usage: rst")
+            print("usage: rsthard")
+            print("usage: rd [addr]")
+            print("usage: wr [addr] [data]")
+            print("usage: run [count] [delay@ms]")
+            print("usage: quit")
+            print("usage: exit")
+
 
 spi.close()
 GPIO.cleanup()
