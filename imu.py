@@ -24,7 +24,7 @@ class ImuData:
     def scaling(self):
         self.accl.scal()
         self.gyro.scal()
-        self.temp=self.temp*0.25+25
+        self.temp=self.temp*0.05+25
     def dump(self):
         print("{0},{1},{2},{3},{4},{5},{6}".format(self.accl.x, self.accl.y, self.accl.z, self.gyro.x, self.gyro.y, self.gyro.z, self.temp))
 
@@ -74,6 +74,11 @@ def ImuResetSoft(spi):
     time.sleep(0.5)
 
 
+############################################
+############################################
+##  < START >
+############################################
+############################################
 spi=spidev.SpiDev()
 spi.open(0, 0)
 spi.max_speed_hz=400000
@@ -83,16 +88,11 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(bcmRst,GPIO.OUT)
 GPIO.output(bcmRst,GPIO.HIGH)
 
-#print('RESPONSE=0x' + format(SpiDevRead(spi,0x56),'x'))
-#print('TEMP_OUT=0x' + format(SpiDevRead(spi,0x1e),'x'))
-#print('GLOB_CMD=0x' + format(SpiDevRead(spi,0x1e),'x'))
-#print('MSC_CTRL=0x' + format(SpiDevRead(spi,0x32),'x'))
-
+##MAINLOOP
 mainloop=True
 while mainloop==True:
     cmdline_str=raw_input()
     cmdline=cmdline_str.split(' ')
-    print(cmdline)
     
     if cmdline[0] in {'rd','read'}:
         if len(cmdline) != 2:
@@ -112,6 +112,16 @@ while mainloop==True:
             print("usage: rst")
         else:
             ImuResetSoft(spi)
+    elif cmdline[0] in {'id'}:
+        if len(cmdline) != 1:
+            print("usage: id")
+        else:
+            print(SpiDevRead(spi,0x56))
+    elif cmdline[0] in {'stat'}:
+        if len(cmdline) != 1:
+            print("usage: stat")
+        else:
+            print(SpiDevRead(spi,0x32))
     elif cmdline[0] in {'rsthard','hardreset'}:
         if len(cmdline) != 1:
             print("usage: hardrst")
@@ -130,6 +140,9 @@ while mainloop==True:
                 imu.dump()
                 time.sleep(delay)
     else:
+        # Usage
+            print("usage: id")
+            print("usage: stat")
             print("usage: rst")
             print("usage: rsthard")
             print("usage: rd [addr]")
