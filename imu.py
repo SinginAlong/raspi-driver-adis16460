@@ -48,7 +48,7 @@ def SpiDevRead(spi,reg):
     ret=((resp[0]<<8)|resp[1])
     return ret
 
-def SpiReadSensor(spi):
+def SpiReadSensor(spi,autoScale=True):
     imu=ImuData()
     resp=SpiDevReadBurst(spi,0x3E)
     arr=array.array('B',resp).tostring()
@@ -60,7 +60,8 @@ def SpiReadSensor(spi):
     imu.gyro.y=values[6]
     imu.gyro.z=values[7]
     imu.temp=values[8]
-    imu.scaling()
+    if autoScale == True:
+        imu.scaling()
     return imu
 
 def ImuResetHard(bcmGpio):
@@ -129,15 +130,23 @@ while mainloop==True:
             ImuResetHard(bcmRst)
     elif cmdline[0] in {'q','quit','exit'}:
         break
+    elif cmdline[0] in {'raw'}:
+        if len(cmdline) != 1:
+            print("usage: raw")
+        else:
+            imu=SpiReadSensor(spi,False)
+            imu.dump()
     elif cmdline[0] in {'run'}:
         if len(cmdline) != 3:
-            print("usage: run [count] [delay@ms]")
+            print("usage: run [count(0=inf)] [delay@ms]")
         else:
             count=int(cmdline[1])
             delay=int(cmdline[2])*0.001
-            for cnt in range(count):
+            cnt=0
+            while cnt<count or count==0:
                 imu=SpiReadSensor(spi)
                 imu.dump()
+                cnt=cnt+1
                 time.sleep(delay)
     else:
         # Usage
@@ -147,7 +156,7 @@ while mainloop==True:
             print("usage: rsthard")
             print("usage: rd [addr]")
             print("usage: wr [addr] [data]")
-            print("usage: run [count] [delay@ms]")
+            print("usage: run [count(0=inf)] [delay@ms]")
             print("usage: quit")
             print("usage: exit")
 
