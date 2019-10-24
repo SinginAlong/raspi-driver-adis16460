@@ -53,12 +53,13 @@ def SpiReadSensor(spi,autoScale=True):
     resp=SpiDevReadBurst(spi,0x3E)
     arr=array.array('B',resp).tostring()
     values=unpack('>hhhhhhhhhhh', arr)
-    imu.accl.x=values[2]
-    imu.accl.y=values[3]
-    imu.accl.z=values[4]
-    imu.gyro.x=values[5]
-    imu.gyro.y=values[6]
-    imu.gyro.z=values[7]
+	# burst order is: DIAG_STAT, X_GYRO_OUT, Y_GYRO_OUT, Z_GYRO_OUT, X_ACCL_OUT, Y_ACCL_OUT, Z_ACCL_OUT, TEMP_OUT
+    imu.gyro.x=values[2]
+    imu.gyro.y=values[3]
+    imu.gyro.z=values[4]
+    imu.accl.x=values[5]
+    imu.accl.y=values[6]
+    imu.accl.z=values[7]
     imu.temp=values[8]
     if autoScale == True:
         imu.scaling()
